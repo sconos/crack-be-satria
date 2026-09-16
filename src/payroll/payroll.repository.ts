@@ -42,7 +42,15 @@ export class PayrollRepository {
       take,
       orderBy: [{ periodYear: 'desc' }, { periodMonth: 'desc' }],
       include: {
-        employee: { select: { firstName: true, lastName: true, employeeCode: true } },
+        employee: {
+          select: {
+            firstName: true,
+            lastName: true,
+            employeeCode: true,
+            position: true,
+            department: { select: { id: true, name: true } },
+          },
+        },
       },
     });
   }

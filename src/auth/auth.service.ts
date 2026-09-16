@@ -65,10 +65,8 @@ export class AuthService {
     if (!user) return { message: 'If that email exists, a reset link was sent.' };
 
     const rawToken = randomBytes(32).toString('hex');
-    // SHA-256, not bcrypt: this needs to be looked up by exact value later,
-    // which bcrypt's salted hashing doesn't support.
     const tokenHash = createHash('sha256').update(rawToken).digest('hex');
-    const expiresAt = new Date(Date.now() + 1000 * 60 * 30); // 30 min
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
 
     await this.userRepository.setResetToken(user.id, tokenHash, expiresAt);
 

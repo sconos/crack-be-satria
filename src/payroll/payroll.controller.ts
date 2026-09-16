@@ -55,9 +55,15 @@ export class PayrollController {
     return this.payrollService.findAll(query);
   }
 
+  // No @Roles() here on purpose — an EMPLOYEE can view their own record,
+  // ADMIN/HR can view any. Ownership is enforced in the service, since it
+  // depends on *which* record :id points to.
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    return this.payrollService.findOne(id);
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: { userId: string; role: 'ADMIN' | 'HR' | 'EMPLOYEE' },
+  ) {
+    return this.payrollService.findOne(id, user);
   }
 
   @Roles('ADMIN', 'HR')
@@ -72,9 +78,14 @@ export class PayrollController {
     return this.payrollService.markPaid(id);
   }
 
+  // Same reasoning as findOne() above — own payslip only, unless ADMIN/HR.
   @Get(':id/payslip')
-  async downloadPayslip(@Param('id') id: string, @Res() res: Response) {
-    const pdfBuffer = await this.payrollService.generatePayslipPdf(id);
+  async downloadPayslip(
+    @Param('id') id: string,
+    @CurrentUser() user: { userId: string; role: 'ADMIN' | 'HR' | 'EMPLOYEE' },
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.payrollService.generatePayslipPdf(id, user);
     res.set({
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename=payslip-${id}.pdf`,

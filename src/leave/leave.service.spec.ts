@@ -10,6 +10,7 @@ describe('LeaveService', () => {
 
   const mockLeaveRepository = {
     findEmployeeIdByUserId: jest.fn(),
+    findEmployeeById: jest.fn(),
     findApprovedInYear: jest.fn(),
     create: jest.fn(),
     findMany: jest.fn(),
@@ -137,6 +138,128 @@ describe('LeaveService', () => {
 
       expect(mockLeaveRepository.findApprovedInYear).not.toHaveBeenCalled();
       expect(mockLeaveRepository.create).toHaveBeenCalled();
+    });
+  });
+
+  describe('createForEmployee', () => {
+    it('throws NotFoundException if the target employee does not exist', async () => {
+      mockLeaveRepository.findEmployeeById.mockResolvedValue(null);
+
+      await expect(
+        service.createForEmployee({
+          employeeId,
+          leaveTypeId,
+          startDate: '2026-09-10',
+          endDate: '2026-09-11',
+          reason: 'Family event',
+        }),
+      ).rejects.toThrow(NotFoundException);
+      expect(mockLeaveTypesRepository.findById).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException if the leave type does not exist', async () => {
+      mockLeaveRepository.findEmployeeById.mockResolvedValue({ id: employeeId });
+      mockLeaveTypesRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.createForEmployee({
+          employeeId,
+          leaveTypeId,
+          startDate: '2026-09-10',
+          endDate: '2026-09-11',
+          reason: 'Family event',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('throws BadRequestException if the leave type is inactive', async () => {
+      mockLeaveRepository.findEmployeeById.mockResolvedValue({ id: employeeId });
+      mockLeaveTypesRepository.findById.mockResolvedValue({
+        id: leaveTypeId,
+        name: 'Annual Leave',
+        isActive: false,
+        defaultAllocation: 12,
+      });
+
+      await expect(
+        service.createForEmployee({
+          employeeId,
+          leaveTypeId,
+          startDate: '2026-09-10',
+          endDate: '2026-09-11',
+          reason: 'Family event',
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a request that exceeds remaining balance', async () => {
+      mockLeaveRepository.findEmployeeById.mockResolvedValue({ id: employeeId });
+      mockLeaveTypesRepository.findById.mockResolvedValue({
+        id: leaveTypeId,
+        name: 'Annual Leave',
+        isActive: true,
+        defaultAllocation: 12,
+      });
+      mockLeaveRepository.findApprovedInYear.mockResolvedValue([{ totalDays: 10 }]);
+
+      await expect(
+        service.createForEmployee({
+          employeeId,
+          leaveTypeId,
+          startDate: '2026-09-10',
+          endDate: '2026-09-13', // 4 days, only 2 remaining
+          reason: 'Family event',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockLeaveRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('skips the balance check when defaultAllocation is 0 (e.g. unpaid leave)', async () => {
+      mockLeaveRepository.findEmployeeById.mockResolvedValue({ id: employeeId });
+      mockLeaveTypesRepository.findById.mockResolvedValue({
+        id: leaveTypeId,
+        name: 'Unpaid Leave',
+        isActive: true,
+        defaultAllocation: 0,
+      });
+      mockLeaveRepository.create.mockImplementation((data) => data);
+
+      await service.createForEmployee({
+        employeeId,
+        leaveTypeId,
+        startDate: '2026-09-10',
+        endDate: '2026-09-10',
+        reason: 'Personal',
+      });
+
+      expect(mockLeaveRepository.findApprovedInYear).not.toHaveBeenCalled();
+      expect(mockLeaveRepository.create).toHaveBeenCalled();
+    });
+
+    it('creates a PENDING request for the given employeeId within balance', async () => {
+      mockLeaveRepository.findEmployeeById.mockResolvedValue({ id: employeeId });
+      mockLeaveTypesRepository.findById.mockResolvedValue({
+        id: leaveTypeId,
+        name: 'Annual Leave',
+        isActive: true,
+        defaultAllocation: 12,
+      });
+      mockLeaveRepository.findApprovedInYear.mockResolvedValue([{ totalDays: 5 }]);
+      mockLeaveRepository.create.mockImplementation((data) => data);
+
+      const result = await service.createForEmployee({
+        employeeId,
+        leaveTypeId,
+        startDate: '2026-09-10',
+        endDate: '2026-09-11', // 2 days, 7 remaining
+        reason: 'Family event',
+      });
+
+      expect(result.employeeId).toBe(employeeId);
+      expect(result.totalDays).toBe(2);
+      expect(mockLeaveRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ employeeId }),
+      );
     });
   });
 

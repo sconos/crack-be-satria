@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { LeaveService } from './leave.service';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
+import { AdminCreateLeaveRequestDto } from './dto/admin-create-leave-request.dto';
 import { ReviewLeaveRequestDto } from './dto/review-leave-request.dto';
 import { QueryLeaveRequestDto } from './dto/query-leave-request.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -20,6 +21,13 @@ export class LeaveController {
   @Post()
   create(@CurrentUser() user: { userId: string }, @Body() dto: CreateLeaveRequestDto) {
     return this.leaveService.create(user.userId, dto);
+  }
+
+  // HR/admin: file a leave request on an employee's behalf (still lands as PENDING)
+  @Roles('ADMIN', 'HR')
+  @Post('admin')
+  createForEmployee(@Body() dto: AdminCreateLeaveRequestDto) {
+    return this.leaveService.createForEmployee(dto);
   }
 
   @Get('me')

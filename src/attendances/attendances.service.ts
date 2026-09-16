@@ -103,8 +103,11 @@ export class AttendancesService {
       ...(query.status && { status: query.status }),
       ...((query.startDate || query.endDate) && {
         date: {
-          ...(query.startDate && { gte: new Date(query.startDate) }),
-          ...(query.endDate && { lte: new Date(query.endDate) }),
+          // was: new Date(query.startDate) / new Date(query.endDate)
+          // — that parses "YYYY-MM-DD" as UTC midnight, which never
+          // matches rows written via startOfDay()'s local-time mutation.
+          ...(query.startDate && { gte: this.startOfDay(new Date(query.startDate)) }),
+          ...(query.endDate && { lte: this.startOfDay(new Date(query.endDate)) }),
         },
       }),
     };

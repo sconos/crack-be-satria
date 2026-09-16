@@ -42,7 +42,14 @@ export class AttendancesRepository {
       take,
       orderBy: { date: 'desc' },
       include: {
-        employee: { select: { firstName: true, lastName: true, employeeCode: true } },
+        employee: {
+          select: {
+            firstName: true,
+            lastName: true,
+            employeeCode: true,
+            department: { select: { id: true, name: true } },
+          },
+        },
       },
     });
   }
@@ -55,7 +62,14 @@ export class AttendancesRepository {
     return this.prisma.attendance.findUnique({
       where: { id },
       include: {
-        employee: { select: { firstName: true, lastName: true, employeeCode: true } },
+        employee: {
+          select: {
+            firstName: true,
+            lastName: true,
+            employeeCode: true,
+            department: { select: { id: true, name: true } },
+          },
+        },
       },
     });
   }

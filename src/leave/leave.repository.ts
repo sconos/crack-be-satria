@@ -1,4 +1,4 @@
-// src/leave/leave.repository.ts — add leave-type lookups, update includes
+// src/leave/leave.repository.ts
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../../generated/prisma/client';
@@ -9,6 +9,11 @@ export class LeaveRepository {
 
   findEmployeeIdByUserId(userId: string) {
     return this.prisma.employee.findUnique({ where: { userId }, select: { id: true } });
+  }
+
+  // used by admin-side leave creation to validate the target employee exists
+  findEmployeeById(employeeId: string) {
+    return this.prisma.employee.findUnique({ where: { id: employeeId }, select: { id: true } });
   }
 
   findApprovedInYear(employeeId: string, leaveTypeId: string, yearStart: Date, yearEnd: Date) {

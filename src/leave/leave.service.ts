@@ -9,6 +9,7 @@ import {
 import { LeaveRepository } from './leave.repository';
 import { LeaveTypesRepository } from '../leave-types/leave-types.repository';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
+import { AdminCreateLeaveRequestDto } from './dto/admin-create-leave-request.dto';
 import { ReviewLeaveRequestDto } from './dto/review-leave-request.dto';
 import { QueryLeaveRequestDto } from './dto/query-leave-request.dto';
 
@@ -30,9 +31,12 @@ export class LeaveService {
     return employee.id;
   }
 
-  async create(userId: string, dto: CreateLeaveRequestDto) {
-    const employeeId = await this.getEmployeeIdForUser(userId);
-
+  // Shared by self-service create() and admin createForEmployee() — everything
+  // except how employeeId is resolved is identical.
+  private async buildAndCreate(
+    employeeId: string,
+    dto: CreateLeaveRequestDto,
+  ) {
     const leaveType = await this.leaveTypesRepository.findById(dto.leaveTypeId);
     if (!leaveType) throw new NotFoundException('Leave type not found');
     if (!leaveType.isActive) throw new BadRequestException('This leave type is no longer active');
@@ -62,6 +66,21 @@ export class LeaveService {
       totalDays,
       reason: dto.reason,
     });
+  }
+
+  async create(userId: string, dto: CreateLeaveRequestDto) {
+    const employeeId = await this.getEmployeeIdForUser(userId);
+    return this.buildAndCreate(employeeId, dto);
+  }
+
+  // HR/admin filing a leave request on an employee's behalf. Goes through the
+  // same validation and lands as PENDING, same as self-submitted requests —
+  // it still needs a separate review/approval step.
+  async createForEmployee(dto: AdminCreateLeaveRequestDto) {
+    const employee = await this.leaveRepository.findEmployeeById(dto.employeeId);
+    if (!employee) throw new NotFoundException('Employee not found');
+
+    return this.buildAndCreate(dto.employeeId, dto);
   }
 
   async getBalance(employeeId: string, leaveTypeId: string, year: number) {

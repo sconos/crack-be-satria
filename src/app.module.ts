@@ -13,9 +13,10 @@ import { PublicHolidaysModule } from './public-holidays/public-holidays.module';
 import { DocumentsModule } from './documents/documents.module';
 import { ReportsModule } from './reports/reports.module';
 import { HealthModule } from './health/health.module';
+import { AttendanceCorrectionsModule } from './attendance-corrections/attendance-corrections.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, EmployeesModule, AttendancesModule, PayrollModule, LeaveModule, DepartmentsModule, LeaveTypesModule, PublicHolidaysModule, DocumentsModule, ReportsModule, HealthModule],
+  imports: [PrismaModule, AuthModule, EmployeesModule, AttendancesModule, PayrollModule, LeaveModule, DepartmentsModule, LeaveTypesModule, PublicHolidaysModule, DocumentsModule, ReportsModule, HealthModule, AttendanceCorrectionsModule],
   controllers: [AppController],
   providers: [AppService],
 })

@@ -2,6 +2,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -12,6 +13,15 @@ import { GeneratePeriodPayrollDto } from './dto/generate-period-payroll.dto';
 import { UpdatePayrollDto } from './dto/update-payroll.dto';
 import { QueryPayrollDto } from './dto/query-payroll.dto';
 import { WORKING_DAYS_PER_MONTH, LATE_DEDUCTION_RATE } from './payroll.constants';
+
+// Matches the shape @CurrentUser() decorates the request with elsewhere
+// (see leave.controller.ts, attendance-corrections.controller.ts) — if your
+// actual current-user.decorator.ts uses different field names, adjust here
+// and in the controller together.
+interface RequestingUser {
+  userId: string;
+  role: 'ADMIN' | 'HR' | 'EMPLOYEE';
+}
 
 @Injectable()
 export class PayrollService {
@@ -118,14 +128,38 @@ export class PayrollService {
     return this.findAll({ ...query, employeeId: employee.id });
   }
 
-  async findOne(id: string) {
+  // Internal lookup with no ownership check — safe to use from update(),
+  // markPaid(), remove(), all of which are @Roles('ADMIN', 'HR') at the
+  // controller level already.
+  private async getOrThrow(id: string) {
     const payroll = await this.payrollRepository.findById(id);
     if (!payroll) throw new NotFoundException('Payroll record not found');
     return payroll;
   }
 
+  // ADMIN/HR can access any record; an EMPLOYEE can only access their own.
+  private async assertCanAccess(
+    payroll: { employeeId: string },
+    requester: RequestingUser,
+  ) {
+    if (requester.role === 'ADMIN' || requester.role === 'HR') return;
+
+    const employee = await this.payrollRepository.findEmployeeIdByUserId(requester.userId);
+    if (!employee || employee.id !== payroll.employeeId) {
+      throw new ForbiddenException('You can only access your own payroll records');
+    }
+  }
+
+  // Public-facing lookup (GET /payroll/:id) — this is the one that was
+  // missing an ownership check.
+  async findOne(id: string, requester: RequestingUser) {
+    const payroll = await this.getOrThrow(id);
+    await this.assertCanAccess(payroll, requester);
+    return payroll;
+  }
+
   async update(id: string, dto: UpdatePayrollDto) {
-    const payroll = await this.findOne(id);
+    const payroll = await this.getOrThrow(id);
     if (payroll.status === 'PAID') {
       throw new BadRequestException('Cannot edit a payroll record that has already been paid');
     }
@@ -137,7 +171,7 @@ export class PayrollService {
   }
 
   async markPaid(id: string) {
-    const payroll = await this.findOne(id);
+    const payroll = await this.getOrThrow(id);
     if (payroll.status === 'PAID') {
       throw new ConflictException('Payroll record is already marked as paid');
     }
@@ -146,16 +180,17 @@ export class PayrollService {
   }
 
   async remove(id: string) {
-    const payroll = await this.findOne(id);
+    const payroll = await this.getOrThrow(id);
     if (payroll.status === 'PAID') {
       throw new BadRequestException('Cannot delete a payroll record that has already been paid');
     }
     return this.payrollRepository.delete(id);
   }
 
-  async generatePayslipPdf(id: string): Promise<Buffer> {
-    const payroll = await this.findOne(id);
-    // ...PDF generation body unchanged from before...
+  async generatePayslipPdf(id: string, requester: RequestingUser): Promise<Buffer> {
+    const payroll = await this.getOrThrow(id);
+    await this.assertCanAccess(payroll, requester);
+
     return new Promise((resolve, reject) => {
       const doc = new PDFDocument({ margin: 50 });
       const chunks: Buffer[] = [];
