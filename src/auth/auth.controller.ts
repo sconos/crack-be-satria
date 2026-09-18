@@ -12,12 +12,12 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 
 const REFRESH_COOKIE_OPTS = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
-    path: '/auth',
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-  };
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'none' as const,
+  path: '/auth',
+  maxAge: 1000 * 60 * 60 * 24 * 7,
+};
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -25,15 +25,23 @@ export class AuthController {
   constructor(private authService: AuthService) {}
 
   @Post('bootstrap-admin')
-  async bootstrapAdmin(@Body() dto: BootstrapAdminDto, @Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken, user } = await this.authService.bootstrapAdmin(dto);
+  async bootstrapAdmin(
+    @Body() dto: BootstrapAdminDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken, refreshToken, user } =
+      await this.authService.bootstrapAdmin(dto);
     res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTS);
     return { accessToken, user };
   }
 
   @Post('login')
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const { accessToken, refreshToken, user } = await this.authService.login(dto);
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { accessToken, refreshToken, user } =
+      await this.authService.login(dto);
     res.cookie('refresh_token', refreshToken, REFRESH_COOKIE_OPTS);
     return { accessToken, user };
   }
