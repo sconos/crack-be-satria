@@ -27,12 +27,20 @@ async function bootstrap() {
     }),
   );
 
+  const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:3000')
+    .split(',')
+    .map((o) => o.trim());
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    origin: allowedOrigins,
     credentials: true,
   });
 
-  console.log('CORS origin configured as:', process.env.FRONTEND_URL ?? 'http://localhost:3000 (fallback - FRONTEND_URL not set!)');
+  console.log(
+    'CORS origin configured as:',
+    process.env.FRONTEND_URL ??
+      'http://localhost:3000 (fallback - FRONTEND_URL not set!)',
+  );
 
   app.useStaticAssets(join(process.cwd(), 'uploads', 'avatars'), {
     prefix: '/uploads/avatars/',
