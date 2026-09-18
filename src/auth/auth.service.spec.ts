@@ -1,9 +1,14 @@
 // src/auth/auth.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ConflictException, ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserRepository } from './user.repository';
 import { JwtService } from '@nestjs/jwt';
+import { EmailService } from '../email/email.service';
 
 describe('AuthService', () => {
   let service: AuthService;
@@ -23,12 +28,17 @@ describe('AuthService', () => {
     sign: jest.fn().mockReturnValue('mocked-jwt-token'),
   };
 
+  const mockEmailService = {
+    send: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         { provide: UserRepository, useValue: mockUserRepository },
         { provide: JwtService, useValue: mockJwtService },
+        { provide: EmailService, useValue: mockEmailService },
       ],
     }).compile();
 
@@ -46,7 +56,10 @@ describe('AuthService', () => {
       mockUserRepository.countByRole.mockResolvedValue(1);
 
       await expect(
-        service.bootstrapAdmin({ email: 'admin@test.com', password: 'password123' }),
+        service.bootstrapAdmin({
+          email: 'admin@test.com',
+          password: 'password123',
+        }),
       ).rejects.toThrow(ForbiddenException);
       expect(mockUserRepository.create).not.toHaveBeenCalled();
     });
@@ -56,7 +69,10 @@ describe('AuthService', () => {
       mockUserRepository.findByEmail.mockResolvedValue({ id: 'existing' });
 
       await expect(
-        service.bootstrapAdmin({ email: 'admin@test.com', password: 'password123' }),
+        service.bootstrapAdmin({
+          email: 'admin@test.com',
+          password: 'password123',
+        }),
       ).rejects.toThrow(ConflictException);
     });
 
@@ -86,13 +102,18 @@ describe('AuthService', () => {
       mockUserRepository.findByResetTokenHash.mockResolvedValue(null);
 
       await expect(
-        service.resetPassword({ token: 'bad-token', password: 'newPassword123' }),
+        service.resetPassword({
+          token: 'bad-token',
+          password: 'newPassword123',
+        }),
       ).rejects.toThrow(BadRequestException);
       expect(mockUserRepository.resetPassword).not.toHaveBeenCalled();
     });
 
     it('resets the password when the token is valid', async () => {
-      mockUserRepository.findByResetTokenHash.mockResolvedValue({ id: 'user-1' });
+      mockUserRepository.findByResetTokenHash.mockResolvedValue({
+        id: 'user-1',
+      });
       mockUserRepository.resetPassword.mockResolvedValue({ id: 'user-1' });
 
       const result = await service.resetPassword({
@@ -100,7 +121,10 @@ describe('AuthService', () => {
         password: 'newPassword123',
       });
 
-      expect(mockUserRepository.resetPassword).toHaveBeenCalledWith('user-1', expect.any(String));
+      expect(mockUserRepository.resetPassword).toHaveBeenCalledWith(
+        'user-1',
+        expect.any(String),
+      );
       expect(result.message).toBe('Password reset successful');
     });
   });
@@ -111,7 +135,9 @@ describe('AuthService', () => {
 
       const result = await service.forgotPassword({ email: 'nobody@test.com' });
 
-      expect(result.message).toBe('If that email exists, a reset link was sent.');
+      expect(result.message).toBe(
+        'If that email exists, a reset link was sent.',
+      );
       expect(mockUserRepository.setResetToken).not.toHaveBeenCalled();
     });
   });

@@ -3,6 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DocumentsService } from './documents.service';
 import { DocumentsRepository } from './documents.repository';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('DocumentsService', () => {
   let service: DocumentsService;
@@ -17,6 +18,11 @@ describe('DocumentsService', () => {
     delete: jest.fn(),
   };
 
+  const mockNotificationsService = {
+    notifyAdmins: jest.fn(),
+    notifyEmployee: jest.fn(),
+  };
+
   const userId = 'user-1';
   const employeeId = 'employee-1';
 
@@ -25,11 +31,14 @@ describe('DocumentsService', () => {
       providers: [
         DocumentsService,
         { provide: DocumentsRepository, useValue: mockDocumentsRepository },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 
     service = module.get<DocumentsService>(DocumentsService);
-    mockDocumentsRepository.findEmployeeIdByUserId.mockResolvedValue({ id: employeeId });
+    mockDocumentsRepository.findEmployeeIdByUserId.mockResolvedValue({
+      id: employeeId,
+    });
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -48,9 +57,16 @@ describe('DocumentsService', () => {
 
     it('creates a document record from the uploaded file', async () => {
       mockDocumentsRepository.create.mockImplementation((data) => data);
-      const fakeFile = { originalname: 'ktp.jpg', filename: 'uuid-generated.jpg' } as Express.Multer.File;
+      const fakeFile = {
+        originalname: 'ktp.jpg',
+        filename: 'uuid-generated.jpg',
+      } as Express.Multer.File;
 
-      const result = await service.upload(userId, { type: 'ID_CARD' }, fakeFile);
+      const result = await service.upload(
+        userId,
+        { type: 'ID_CARD' },
+        fakeFile,
+      );
 
       expect(result.employeeId).toBe(employeeId);
       expect(result.fileName).toBe('ktp.jpg');
@@ -77,9 +93,14 @@ describe('DocumentsService', () => {
 
     it('verifies a document successfully', async () => {
       mockDocumentsRepository.findById.mockResolvedValue({ id: 'doc-1' });
-      mockDocumentsRepository.update.mockResolvedValue({ id: 'doc-1', status: 'VERIFIED' });
+      mockDocumentsRepository.update.mockResolvedValue({
+        id: 'doc-1',
+        status: 'VERIFIED',
+      });
 
-      const result = await service.review('doc-1', 'reviewer-1', { decision: 'VERIFIED' } as any);
+      const result = await service.review('doc-1', 'reviewer-1', {
+        decision: 'VERIFIED',
+      } as any);
 
       expect(result.status).toBe('VERIFIED');
     });

@@ -38,7 +38,9 @@ describe('EmployeesService', () => {
 
   describe('create', () => {
     it('throws ConflictException if the email is already registered', async () => {
-      mockEmployeesRepository.findUserByEmail.mockResolvedValue({ id: 'existing' });
+      mockEmployeesRepository.findUserByEmail.mockResolvedValue({
+        id: 'existing',
+      });
 
       await expect(
         service.create({
@@ -46,7 +48,7 @@ describe('EmployeesService', () => {
           password: 'password123',
           firstName: 'A',
           lastName: 'B',
-          position: 'Engineer',
+          jobTitleId: 'job-title-1',
         }),
       ).rejects.toThrow(ConflictException);
       expect(mockEmployeesRepository.createWithUser).not.toHaveBeenCalled();
@@ -55,14 +57,16 @@ describe('EmployeesService', () => {
     it('generates a sequential employee code and creates the record', async () => {
       mockEmployeesRepository.findUserByEmail.mockResolvedValue(null);
       mockEmployeesRepository.countEmployees.mockResolvedValue(4);
-      mockEmployeesRepository.createWithUser.mockResolvedValue({ id: 'emp-new' });
+      mockEmployeesRepository.createWithUser.mockResolvedValue({
+        id: 'emp-new',
+      });
 
       await service.create({
         email: 'new@test.com',
         password: 'password123',
         firstName: 'A',
         lastName: 'B',
-        position: 'Engineer',
+        jobTitleId: 'job-title-1',
         departmentId: 'dept-1',
       });
 
@@ -77,11 +81,16 @@ describe('EmployeesService', () => {
   describe('updateStatus', () => {
     it('updates employmentStatus on an existing employee', async () => {
       mockEmployeesRepository.findById.mockResolvedValue({ id: 'emp-1' });
-      mockEmployeesRepository.update.mockResolvedValue({ id: 'emp-1', employmentStatus: 'INACTIVE' });
+      mockEmployeesRepository.update.mockResolvedValue({
+        id: 'emp-1',
+        employmentStatus: 'INACTIVE',
+      });
 
       await service.updateStatus('emp-1', { status: 'INACTIVE' });
 
-      expect(mockEmployeesRepository.update).toHaveBeenCalledWith('emp-1', { employmentStatus: 'INACTIVE' });
+      expect(mockEmployeesRepository.update).toHaveBeenCalledWith('emp-1', {
+        employmentStatus: 'INACTIVE',
+      });
     });
   });
 });

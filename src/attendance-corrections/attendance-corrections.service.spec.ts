@@ -1,8 +1,13 @@
 // src/attendance-corrections/attendance-corrections.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { AttendanceCorrectionsService } from './attendance-corrections.service';
 import { AttendanceCorrectionsRepository } from './attendance-corrections.repository';
+import { NotificationsService } from '../notifications/notifications.service';
 import { CorrectionStatus } from '../../generated/prisma/client';
 
 describe('AttendanceCorrectionsService', () => {
@@ -20,11 +25,17 @@ describe('AttendanceCorrectionsService', () => {
     updateStatus: jest.fn(),
   };
 
+  const mockNotificationsService = {
+    notifyAdmins: jest.fn(),
+    notifyEmployee: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AttendanceCorrectionsService,
         { provide: AttendanceCorrectionsRepository, useValue: mockRepository },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 
@@ -42,7 +53,7 @@ describe('AttendanceCorrectionsService', () => {
       reason: 'Forgot to clock in',
     };
 
-    it('creates a correction request for the caller\'s own attendance record', async () => {
+    it("creates a correction request for the caller's own attendance record", async () => {
       repository.findEmployeeIdByUserId.mockResolvedValue({ id: employeeId });
       repository.findAttendanceById.mockResolvedValue({
         id: 'attendance-1',
@@ -65,14 +76,18 @@ describe('AttendanceCorrectionsService', () => {
     it('throws NotFoundException when the caller has no employee profile', async () => {
       repository.findEmployeeIdByUserId.mockResolvedValue(null);
 
-      await expect(service.create(userId, dto as any)).rejects.toThrow(NotFoundException);
+      await expect(service.create(userId, dto as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws NotFoundException when the attendance record does not exist', async () => {
       repository.findEmployeeIdByUserId.mockResolvedValue({ id: employeeId });
       repository.findAttendanceById.mockResolvedValue(null);
 
-      await expect(service.create(userId, dto as any)).rejects.toThrow(NotFoundException);
+      await expect(service.create(userId, dto as any)).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('throws ForbiddenException when the attendance record belongs to someone else', async () => {
@@ -82,7 +97,9 @@ describe('AttendanceCorrectionsService', () => {
         employeeId: 'someone-else',
       } as any);
 
-      await expect(service.create(userId, dto as any)).rejects.toThrow(ForbiddenException);
+      await expect(service.create(userId, dto as any)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -103,7 +120,12 @@ describe('AttendanceCorrectionsService', () => {
         5,
         5,
       );
-      expect(result.meta).toEqual({ total: 1, page: 2, limit: 5, totalPages: 1 });
+      expect(result.meta).toEqual({
+        total: 1,
+        page: 2,
+        limit: 5,
+        totalPages: 1,
+      });
     });
   });
 
@@ -111,13 +133,17 @@ describe('AttendanceCorrectionsService', () => {
     it('throws NotFoundException when the request does not exist', async () => {
       repository.findById.mockResolvedValue(null);
 
-      await expect(service.findOne('missing-id')).rejects.toThrow(NotFoundException);
+      await expect(service.findOne('missing-id')).rejects.toThrow(
+        NotFoundException,
+      );
     });
 
     it('returns the request when found', async () => {
       repository.findById.mockResolvedValue({ id: 'correction-1' } as any);
 
-      await expect(service.findOne('correction-1')).resolves.toEqual({ id: 'correction-1' });
+      await expect(service.findOne('correction-1')).resolves.toEqual({
+        id: 'correction-1',
+      });
     });
   });
 
@@ -135,7 +161,9 @@ describe('AttendanceCorrectionsService', () => {
       repository.findById.mockResolvedValue(null);
 
       await expect(
-        service.review('missing-id', reviewerUserId, { status: CorrectionStatus.APPROVED } as any),
+        service.review('missing-id', reviewerUserId, {
+          status: CorrectionStatus.APPROVED,
+        } as any),
       ).rejects.toThrow(NotFoundException);
     });
 
@@ -146,7 +174,9 @@ describe('AttendanceCorrectionsService', () => {
       } as any);
 
       await expect(
-        service.review('correction-1', reviewerUserId, { status: CorrectionStatus.APPROVED } as any),
+        service.review('correction-1', reviewerUserId, {
+          status: CorrectionStatus.APPROVED,
+        } as any),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -154,7 +184,9 @@ describe('AttendanceCorrectionsService', () => {
       repository.findById.mockResolvedValue(pendingRequest as any);
 
       await expect(
-        service.review('correction-1', reviewerUserId, { status: CorrectionStatus.REJECTED } as any),
+        service.review('correction-1', reviewerUserId, {
+          status: CorrectionStatus.REJECTED,
+        } as any),
       ).rejects.toThrow(BadRequestException);
     });
 
@@ -179,6 +211,7 @@ describe('AttendanceCorrectionsService', () => {
       expect(repository.updateAttendance).toHaveBeenCalledWith('attendance-1', {
         checkIn: pendingRequest.requestedCheckIn,
         checkOut: pendingRequest.requestedCheckOut,
+        status: 'PRESENT',
       });
       expect(result.status).toBe(CorrectionStatus.APPROVED);
     });

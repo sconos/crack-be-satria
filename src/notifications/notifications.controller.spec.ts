@@ -5,14 +5,25 @@ import { NotificationsService } from './notifications.service';
 describe('NotificationsController', () => {
   let controller: NotificationsController;
 
+  const mockNotificationsService = {
+    findMyNotifications: jest.fn(),
+    getUnreadCount: jest.fn(),
+    markRead: jest.fn(),
+    markAllRead: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [NotificationsController],
-      providers: [NotificationsService],
+      providers: [
+        { provide: NotificationsService, useValue: mockNotificationsService },
+      ],
     }).compile();
 
     controller = module.get<NotificationsController>(NotificationsController);
   });
+
+  afterEach(() => jest.clearAllMocks());
 
   it('should be defined', () => {
     expect(controller).toBeDefined();

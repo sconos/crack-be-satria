@@ -1,9 +1,15 @@
 // src/leave/leave.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { LeaveService } from './leave.service';
 import { LeaveRepository } from './leave.repository';
 import { LeaveTypesRepository } from '../leave-types/leave-types.repository';
+import { NotificationsService } from '../notifications/notifications.service';
 
 describe('LeaveService', () => {
   let service: LeaveService;
@@ -24,6 +30,11 @@ describe('LeaveService', () => {
     findActive: jest.fn(),
   };
 
+  const mockNotificationsService = {
+    notifyAdmins: jest.fn(),
+    notifyEmployee: jest.fn(),
+  };
+
   const userId = 'user-1';
   const employeeId = 'employee-1';
   const leaveTypeId = 'leave-type-annual';
@@ -34,11 +45,14 @@ describe('LeaveService', () => {
         LeaveService,
         { provide: LeaveRepository, useValue: mockLeaveRepository },
         { provide: LeaveTypesRepository, useValue: mockLeaveTypesRepository },
+        { provide: NotificationsService, useValue: mockNotificationsService },
       ],
     }).compile();
 
     service = module.get<LeaveService>(LeaveService);
-    mockLeaveRepository.findEmployeeIdByUserId.mockResolvedValue({ id: employeeId });
+    mockLeaveRepository.findEmployeeIdByUserId.mockResolvedValue({
+      id: employeeId,
+    });
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -86,7 +100,9 @@ describe('LeaveService', () => {
         isActive: true,
         defaultAllocation: 12,
       });
-      mockLeaveRepository.findApprovedInYear.mockResolvedValue([{ totalDays: 10 }]);
+      mockLeaveRepository.findApprovedInYear.mockResolvedValue([
+        { totalDays: 10 },
+      ]);
 
       await expect(
         service.create(userId, {
@@ -106,7 +122,9 @@ describe('LeaveService', () => {
         isActive: true,
         defaultAllocation: 12,
       });
-      mockLeaveRepository.findApprovedInYear.mockResolvedValue([{ totalDays: 5 }]);
+      mockLeaveRepository.findApprovedInYear.mockResolvedValue([
+        { totalDays: 5 },
+      ]);
       mockLeaveRepository.create.mockImplementation((data) => data);
 
       const result = await service.create(userId, {
@@ -158,7 +176,9 @@ describe('LeaveService', () => {
     });
 
     it('throws NotFoundException if the leave type does not exist', async () => {
-      mockLeaveRepository.findEmployeeById.mockResolvedValue({ id: employeeId });
+      mockLeaveRepository.findEmployeeById.mockResolvedValue({
+        id: employeeId,
+      });
       mockLeaveTypesRepository.findById.mockResolvedValue(null);
 
       await expect(
@@ -173,7 +193,9 @@ describe('LeaveService', () => {
     });
 
     it('throws BadRequestException if the leave type is inactive', async () => {
-      mockLeaveRepository.findEmployeeById.mockResolvedValue({ id: employeeId });
+      mockLeaveRepository.findEmployeeById.mockResolvedValue({
+        id: employeeId,
+      });
       mockLeaveTypesRepository.findById.mockResolvedValue({
         id: leaveTypeId,
         name: 'Annual Leave',
@@ -193,21 +215,25 @@ describe('LeaveService', () => {
     });
 
     it('rejects a request that exceeds remaining balance', async () => {
-      mockLeaveRepository.findEmployeeById.mockResolvedValue({ id: employeeId });
+      mockLeaveRepository.findEmployeeById.mockResolvedValue({
+        id: employeeId,
+      });
       mockLeaveTypesRepository.findById.mockResolvedValue({
         id: leaveTypeId,
         name: 'Annual Leave',
         isActive: true,
         defaultAllocation: 12,
       });
-      mockLeaveRepository.findApprovedInYear.mockResolvedValue([{ totalDays: 10 }]);
+      mockLeaveRepository.findApprovedInYear.mockResolvedValue([
+        { totalDays: 10 },
+      ]);
 
       await expect(
         service.createForEmployee({
           employeeId,
           leaveTypeId,
           startDate: '2026-09-10',
-          endDate: '2026-09-13', // 4 days, only 2 remaining
+          endDate: '2026-09-13',
           reason: 'Family event',
         }),
       ).rejects.toThrow(BadRequestException);
@@ -215,7 +241,9 @@ describe('LeaveService', () => {
     });
 
     it('skips the balance check when defaultAllocation is 0 (e.g. unpaid leave)', async () => {
-      mockLeaveRepository.findEmployeeById.mockResolvedValue({ id: employeeId });
+      mockLeaveRepository.findEmployeeById.mockResolvedValue({
+        id: employeeId,
+      });
       mockLeaveTypesRepository.findById.mockResolvedValue({
         id: leaveTypeId,
         name: 'Unpaid Leave',
@@ -237,14 +265,18 @@ describe('LeaveService', () => {
     });
 
     it('creates a PENDING request for the given employeeId within balance', async () => {
-      mockLeaveRepository.findEmployeeById.mockResolvedValue({ id: employeeId });
+      mockLeaveRepository.findEmployeeById.mockResolvedValue({
+        id: employeeId,
+      });
       mockLeaveTypesRepository.findById.mockResolvedValue({
         id: leaveTypeId,
         name: 'Annual Leave',
         isActive: true,
         defaultAllocation: 12,
       });
-      mockLeaveRepository.findApprovedInYear.mockResolvedValue([{ totalDays: 5 }]);
+      mockLeaveRepository.findApprovedInYear.mockResolvedValue([
+        { totalDays: 5 },
+      ]);
       mockLeaveRepository.create.mockImplementation((data) => data);
 
       const result = await service.createForEmployee({
@@ -271,13 +303,18 @@ describe('LeaveService', () => {
         status: 'PENDING',
       });
 
-      await expect(service.cancel(userId, 'req-1')).rejects.toThrow(ForbiddenException);
+      await expect(service.cancel(userId, 'req-1')).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
   describe('review', () => {
     it('throws ConflictException if already reviewed', async () => {
-      mockLeaveRepository.findById.mockResolvedValue({ id: 'req-1', status: 'APPROVED' });
+      mockLeaveRepository.findById.mockResolvedValue({
+        id: 'req-1',
+        status: 'APPROVED',
+      });
 
       await expect(
         service.review('req-1', 'reviewer-1', { decision: 'APPROVED' }),
@@ -285,7 +322,10 @@ describe('LeaveService', () => {
     });
 
     it('throws BadRequestException if rejecting without a reason', async () => {
-      mockLeaveRepository.findById.mockResolvedValue({ id: 'req-1', status: 'PENDING' });
+      mockLeaveRepository.findById.mockResolvedValue({
+        id: 'req-1',
+        status: 'PENDING',
+      });
 
       await expect(
         service.review('req-1', 'reviewer-1', { decision: 'REJECTED' }),
