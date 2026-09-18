@@ -24,7 +24,6 @@ export class LeaveTypesController {
 
   @Get()
   findAll() {
-    // any authenticated user can see leave types (needed to populate the request form)
     return this.leaveTypesService.findActive();
   }
 

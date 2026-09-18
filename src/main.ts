@@ -1,6 +1,8 @@
 // src/main.ts
 import 'dotenv/config';
+import { join } from 'path';
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
@@ -8,7 +10,7 @@ import { AppModule } from './app.module';
 import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.use(helmet({
     crossOriginResourcePolicy: { policy: 'cross-origin' },
   }));
@@ -17,6 +19,10 @@ async function bootstrap() {
   app.enableCors({
     origin: process.env.FRONTEND_URL ?? 'http://localhost:3000',
     credentials: true,
+  });
+
+  app.useStaticAssets(join(process.cwd(), 'uploads', 'avatars'), {
+    prefix: '/uploads/avatars/',
   });
 
   const config = new DocumentBuilder()

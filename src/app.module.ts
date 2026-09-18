@@ -14,9 +14,12 @@ import { DocumentsModule } from './documents/documents.module';
 import { ReportsModule } from './reports/reports.module';
 import { HealthModule } from './health/health.module';
 import { AttendanceCorrectionsModule } from './attendance-corrections/attendance-corrections.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { EmailModule } from './email/email.module';
+import { JobTitleModule } from './job-title/job-title.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, EmployeesModule, AttendancesModule, PayrollModule, LeaveModule, DepartmentsModule, LeaveTypesModule, PublicHolidaysModule, DocumentsModule, ReportsModule, HealthModule, AttendanceCorrectionsModule],
+  imports: [PrismaModule, AuthModule, EmployeesModule, AttendancesModule, PayrollModule, LeaveModule, DepartmentsModule, LeaveTypesModule, PublicHolidaysModule, DocumentsModule, ReportsModule, HealthModule, AttendanceCorrectionsModule, NotificationsModule, EmailModule, JobTitleModule],
   controllers: [AppController],
   providers: [AppService],
 })

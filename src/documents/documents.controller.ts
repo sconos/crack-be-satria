@@ -16,7 +16,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { diskStorage, type Options as MulterOptions } from 'multer';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
 import type { Response } from 'express';
@@ -24,11 +24,20 @@ import { DocumentsService } from './documents.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { ReviewDocumentDto } from './dto/review-document.dto';
 import { QueryDocumentDto } from './dto/query-document.dto';
-import { DOCUMENTS_UPLOAD_DIR, MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES } from './documents.constants';
+import { DOCUMENTS_UPLOAD_DIR, MAX_FILE_SIZE_BYTES, ALLOWED_MIME_TYPES, MAX_FIELD_ARRAY_INDEX } from './documents.constants';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+
+type MulterLimitsWithFieldArrayIndex = NonNullable<MulterOptions['limits']> & {
+  fieldArrayIndexLimit?: number;
+};
+
+const uploadLimits: MulterLimitsWithFieldArrayIndex = {
+  fileSize: MAX_FILE_SIZE_BYTES,
+  fieldArrayIndexLimit: MAX_FIELD_ARRAY_INDEX,
+};
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('documents')
@@ -55,7 +64,7 @@ export class DocumentsController {
           callback(null, uniqueName);
         },
       }),
-      limits: { fileSize: MAX_FILE_SIZE_BYTES },
+      limits: uploadLimits,
       fileFilter: (_req, file, callback) => {
         if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
           return callback(

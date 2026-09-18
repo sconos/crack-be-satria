@@ -55,9 +55,6 @@ export class PayrollController {
     return this.payrollService.findAll(query);
   }
 
-  // No @Roles() here on purpose — an EMPLOYEE can view their own record,
-  // ADMIN/HR can view any. Ownership is enforced in the service, since it
-  // depends on *which* record :id points to.
   @Get(':id')
   async findOne(
     @Param('id') id: string,
@@ -78,7 +75,6 @@ export class PayrollController {
     return this.payrollService.markPaid(id);
   }
 
-  // Same reasoning as findOne() above — own payslip only, unless ADMIN/HR.
   @Get(':id/payslip')
   async downloadPayslip(
     @Param('id') id: string,

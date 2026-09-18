@@ -22,7 +22,6 @@ export class PublicHolidaysController {
 
   @Get()
   findAll() {
-    // any authenticated user can view the holiday calendar
     return this.publicHolidaysService.findAll();
   }
 

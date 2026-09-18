@@ -9,12 +9,17 @@ import { AttendanceCorrectionsRepository } from './attendance-corrections.reposi
 import { CreateAttendanceCorrectionDto } from './dto/create-attendance-correction.dto';
 import { QueryAttendanceCorrectionDto } from './dto/query-attendance-correction.dto';
 import { ReviewAttendanceCorrectionDto } from './dto/review-attendance-correction.dto';
+import { computeAttendanceStatus } from '../attendances/attendance.constants';
 import { CORRECTION_ERRORS } from './attendance-correction.constants';
-import { CorrectionStatus } from '../../generated/prisma/client';
+import { CorrectionStatus, Prisma } from '../../generated/prisma/client';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class AttendanceCorrectionsService {
-  constructor(private correctionsRepository: AttendanceCorrectionsRepository) {}
+  constructor(
+    private correctionsRepository: AttendanceCorrectionsRepository,
+    private notificationsService: NotificationsService,
+  ) {}
 
   private async getEmployeeIdForUser(userId: string): Promise<string> {
     const employee = await this.correctionsRepository.findEmployeeIdByUserId(userId);
@@ -33,13 +38,22 @@ export class AttendanceCorrectionsService {
       throw new ForbiddenException(CORRECTION_ERRORS.FORBIDDEN_OWNER);
     }
 
-    return this.correctionsRepository.create({
+    const request = await this.correctionsRepository.create({
       attendanceId: dto.attendanceId,
       employeeId,
       requestedCheckIn: dto.requestedCheckIn ? new Date(dto.requestedCheckIn) : undefined,
       requestedCheckOut: dto.requestedCheckOut ? new Date(dto.requestedCheckOut) : undefined,
       reason: dto.reason,
     });
+
+    await this.notificationsService.notifyAdmins(
+      'CORRECTION_SUBMITTED',
+      'New correction request',
+      'An attendance correction needs review.',
+      '/attendances',
+    );
+
+    return request;
   }
 
   async findAll(query: QueryAttendanceCorrectionDto) {
@@ -65,8 +79,11 @@ export class AttendanceCorrectionsService {
     return request;
   }
 
-  // HR/admin approve or reject — this is the Approvals tab action.
-  // Approving writes the requested check-in/check-out back onto the Attendance record.
+  async findMyRequests(userId: string, query: QueryAttendanceCorrectionDto) {
+    const employeeId = await this.getEmployeeIdForUser(userId);
+    return this.findAll({ ...query, employeeId });
+  }
+
   async review(id: string, reviewerUserId: string, dto: ReviewAttendanceCorrectionDto) {
     const request = await this.correctionsRepository.findById(id);
     if (!request) throw new NotFoundException(CORRECTION_ERRORS.REQUEST_NOT_FOUND);
@@ -86,11 +103,27 @@ export class AttendanceCorrectionsService {
     });
 
     if (dto.status === CorrectionStatus.APPROVED) {
-      await this.correctionsRepository.updateAttendance(request.attendanceId, {
+      const updateData: Prisma.AttendanceUpdateInput = {
         ...(request.requestedCheckIn && { checkIn: request.requestedCheckIn }),
         ...(request.requestedCheckOut && { checkOut: request.requestedCheckOut }),
-      });
+      };
+
+      if (request.requestedCheckIn) {
+        updateData.status = computeAttendanceStatus(request.requestedCheckIn);
+      }
+
+      await this.correctionsRepository.updateAttendance(request.attendanceId, updateData);
     }
+
+    await this.notificationsService.notifyEmployee(
+      request.employeeId,
+      'CORRECTION_REVIEWED',
+      dto.status === CorrectionStatus.APPROVED ? 'Correction approved' : 'Correction rejected',
+      dto.status === CorrectionStatus.APPROVED
+        ? 'Your attendance correction request was approved.'
+        : `Your attendance correction request was rejected: ${dto.rejectionReason}`,
+      '/portal/attendance',
+    );
 
     return updated;
   }

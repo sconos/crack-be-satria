@@ -8,7 +8,6 @@ export class ReviewAttendanceCorrectionDto {
   })
   status!: Extract<CorrectionStatus, 'APPROVED' | 'REJECTED'>;
 
-  // required in practice when status is REJECTED — enforced in the service
   @IsOptional()
   @IsString()
   rejectionReason?: string;

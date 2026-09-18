@@ -1,4 +1,3 @@
-// src/leave/leave.service.ts
 import {
   BadRequestException,
   ConflictException,
@@ -12,12 +11,14 @@ import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 import { AdminCreateLeaveRequestDto } from './dto/admin-create-leave-request.dto';
 import { ReviewLeaveRequestDto } from './dto/review-leave-request.dto';
 import { QueryLeaveRequestDto } from './dto/query-leave-request.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class LeaveService {
   constructor(
     private leaveRepository: LeaveRepository,
     private leaveTypesRepository: LeaveTypesRepository,
+    private notificationsService: NotificationsService,
   ) {}
 
   private countDaysInclusive(start: Date, end: Date): number {
@@ -31,8 +32,6 @@ export class LeaveService {
     return employee.id;
   }
 
-  // Shared by self-service create() and admin createForEmployee() — everything
-  // except how employeeId is resolved is identical.
   private async buildAndCreate(
     employeeId: string,
     dto: CreateLeaveRequestDto,
@@ -48,7 +47,6 @@ export class LeaveService {
     }
     const totalDays = this.countDaysInclusive(startDate, endDate);
 
-    // defaultAllocation of 0 means "no quota limit" (e.g. unpaid leave)
     if (leaveType.defaultAllocation > 0) {
       const balance = await this.getBalance(employeeId, dto.leaveTypeId, startDate.getFullYear());
       if (totalDays > balance.remaining) {
@@ -58,7 +56,7 @@ export class LeaveService {
       }
     }
 
-    return this.leaveRepository.create({
+    const request = await this.leaveRepository.create({
       employeeId,
       leaveTypeId: dto.leaveTypeId,
       startDate,
@@ -66,6 +64,15 @@ export class LeaveService {
       totalDays,
       reason: dto.reason,
     });
+
+    await this.notificationsService.notifyAdmins(
+      'LEAVE_SUBMITTED',
+      'New leave request',
+      `A ${leaveType.name} request needs review.`,
+      '/leave',
+    );
+
+    return request;
   }
 
   async create(userId: string, dto: CreateLeaveRequestDto) {
@@ -73,9 +80,6 @@ export class LeaveService {
     return this.buildAndCreate(employeeId, dto);
   }
 
-  // HR/admin filing a leave request on an employee's behalf. Goes through the
-  // same validation and lands as PENDING, same as self-submitted requests —
-  // it still needs a separate review/approval step.
   async createForEmployee(dto: AdminCreateLeaveRequestDto) {
     const employee = await this.leaveRepository.findEmployeeById(dto.employeeId);
     if (!employee) throw new NotFoundException('Employee not found');
@@ -155,11 +159,23 @@ export class LeaveService {
       throw new BadRequestException('rejectionReason is required when rejecting');
     }
 
-    return this.leaveRepository.update(id, {
+    const updated = await this.leaveRepository.update(id, {
       status: dto.decision,
       rejectionReason: dto.decision === 'REJECTED' ? dto.rejectionReason : null,
       reviewedByUserId: reviewerUserId,
       reviewedAt: new Date(),
     });
+
+    await this.notificationsService.notifyEmployee(
+      request.employeeId,
+      'LEAVE_REVIEWED',
+      dto.decision === 'APPROVED' ? 'Leave approved' : 'Leave rejected',
+      dto.decision === 'APPROVED'
+        ? 'Your leave request was approved.'
+        : `Your leave request was rejected: ${dto.rejectionReason}`,
+      '/portal/leave',
+    );
+
+    return updated;
   }
 }

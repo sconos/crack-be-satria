@@ -8,3 +8,4 @@ export const ALLOWED_MIME_TYPES = [
   'image/jpeg',
   'image/png',
 ];
+export const MAX_FIELD_ARRAY_INDEX = 0;

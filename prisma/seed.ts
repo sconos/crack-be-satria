@@ -50,13 +50,32 @@ async function main() {
     create: { name: 'Finance', code: 'FIN', location: 'Jakarta HQ' },
   });
 
+    // --- Job Titles ---
+  const jobTitleSeeds = [
+    'Engineering Manager',
+    'Frontend Engineer',
+    'Sales Executive',
+    'Marketing Specialist',
+    'Finance Analyst',
+  ];
+
+  const jobTitles = new Map<string, string>(); // name -> id
+  for (const name of jobTitleSeeds) {
+    const jobTitle = await prisma.jobTitle.upsert({
+      where: { name },
+      update: {},
+      create: { name },
+    });
+    jobTitles.set(name, jobTitle.id);
+  }
+
   // --- Employees ---
   const employeeSeeds = [
-    { firstName: 'Budi', lastName: 'Santoso', position: 'Engineering Manager', department: engineering, baseSalary: 22_000_000, managerId: null as string | null },
-    { firstName: 'Siti', lastName: 'Rahayu', position: 'Frontend Engineer', department: engineering, baseSalary: 14_000_000, managerId: null as string | null },
-    { firstName: 'Andi', lastName: 'Wijaya', position: 'Sales Executive', department: sales, baseSalary: 10_000_000, managerId: null as string | null },
-    { firstName: 'Dewi', lastName: 'Lestari', position: 'Marketing Specialist', department: marketing, baseSalary: 11_000_000, managerId: null as string | null },
-    { firstName: 'Rudi', lastName: 'Hartono', position: 'Finance Analyst', department: finance, baseSalary: 12_000_000, managerId: null as string | null },
+    { firstName: 'Budi', lastName: 'Santoso', jobTitleName: 'Engineering Manager', department: engineering, baseSalary: 22_000_000, managerId: null as string | null },
+    { firstName: 'Siti', lastName: 'Rahayu', jobTitleName: 'Frontend Engineer', department: engineering, baseSalary: 14_000_000, managerId: null as string | null },
+    { firstName: 'Andi', lastName: 'Wijaya', jobTitleName: 'Sales Executive', department: sales, baseSalary: 10_000_000, managerId: null as string | null },
+    { firstName: 'Dewi', lastName: 'Lestari', jobTitleName: 'Marketing Specialist', department: marketing, baseSalary: 11_000_000, managerId: null as string | null },
+    { firstName: 'Rudi', lastName: 'Hartono', jobTitleName: 'Finance Analyst', department: finance, baseSalary: 12_000_000, managerId: null as string | null },
   ];
 
   const employees: Employee[] = [];
@@ -78,14 +97,13 @@ async function main() {
         firstName: seed.firstName,
         lastName: seed.lastName,
         phone: `08123456${String(i).padStart(4, '0')}`,
-        position: seed.position,
+        jobTitleId: jobTitles.get(seed.jobTitleName)!,
         departmentId: seed.department.id,
         employmentType: 'FULL_TIME',
         employmentStatus: 'ACTIVE',
         baseSalary: seed.baseSalary,
         hireDate: new Date(2024, i, 1),
         userId: user.id,
-        // Siti reports to Budi (index 0); everyone else has no manager for now
         managerId: i === 1 ? employees[0]?.id : undefined,
       },
     });

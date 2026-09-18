@@ -14,10 +14,6 @@ import { UpdatePayrollDto } from './dto/update-payroll.dto';
 import { QueryPayrollDto } from './dto/query-payroll.dto';
 import { WORKING_DAYS_PER_MONTH, LATE_DEDUCTION_RATE } from './payroll.constants';
 
-// Matches the shape @CurrentUser() decorates the request with elsewhere
-// (see leave.controller.ts, attendance-corrections.controller.ts) — if your
-// actual current-user.decorator.ts uses different field names, adjust here
-// and in the controller together.
 interface RequestingUser {
   userId: string;
   role: 'ADMIN' | 'HR' | 'EMPLOYEE';
@@ -128,16 +124,12 @@ export class PayrollService {
     return this.findAll({ ...query, employeeId: employee.id });
   }
 
-  // Internal lookup with no ownership check — safe to use from update(),
-  // markPaid(), remove(), all of which are @Roles('ADMIN', 'HR') at the
-  // controller level already.
   private async getOrThrow(id: string) {
     const payroll = await this.payrollRepository.findById(id);
     if (!payroll) throw new NotFoundException('Payroll record not found');
     return payroll;
   }
 
-  // ADMIN/HR can access any record; an EMPLOYEE can only access their own.
   private async assertCanAccess(
     payroll: { employeeId: string },
     requester: RequestingUser,
@@ -150,8 +142,6 @@ export class PayrollService {
     }
   }
 
-  // Public-facing lookup (GET /payroll/:id) — this is the one that was
-  // missing an ownership check.
   async findOne(id: string, requester: RequestingUser) {
     const payroll = await this.getOrThrow(id);
     await this.assertCanAccess(payroll, requester);
@@ -199,12 +189,13 @@ export class PayrollService {
       doc.on('error', reject);
 
       const monthName = new Date(payroll.periodYear, payroll.periodMonth - 1).toLocaleString('default', { month: 'long' });
+      const statusLabel = payroll.status === 'PAID' ? 'Paid' : 'Pending';
       doc.fontSize(20).text('Koru HRM — Payslip', { align: 'center' });
       doc.moveDown();
       doc.fontSize(12).text(`Period: ${monthName} ${payroll.periodYear}`);
       doc.text(`Employee: ${payroll.employee.firstName} ${payroll.employee.lastName}`);
       doc.text(`Employee Code: ${payroll.employee.employeeCode}`);
-      doc.text(`Position: ${payroll.employee.position} — ${payroll.employee.department}`);
+      doc.text(`Position: ${payroll.employee.jobTitle?.name ?? 'No title'} — ${payroll.employee.department?.name ?? 'No department'}`);
       doc.moveDown();
       doc.fontSize(14).text('Earnings & Deductions', { underline: true });
       doc.moveDown(0.5);
@@ -219,7 +210,7 @@ export class PayrollService {
         doc.fontSize(10).text(`Notes: ${payroll.notes}`);
       }
       doc.moveDown(2);
-      doc.fontSize(10).text(`Status: ${payroll.status}${payroll.paidAt ? ` — Paid on ${payroll.paidAt.toLocaleDateString('id-ID')}` : ''}`);
+      doc.fontSize(10).text(`Status: ${statusLabel}${payroll.paidAt ? ` — Paid on ${payroll.paidAt.toLocaleDateString('id-ID')}` : ''}`);
       doc.end();
     });
   }

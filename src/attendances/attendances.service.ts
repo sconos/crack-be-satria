@@ -9,7 +9,7 @@ import { AttendancesRepository } from './attendances.repository';
 import { CreateAttendanceDto } from './dto/create-attendance.dto';
 import { UpdateAttendanceDto } from './dto/update-attendance.dto';
 import { QueryAttendanceDto } from './dto/query-attendance.dto';
-import { WORK_START_HOUR, LATE_GRACE_MINUTES } from './attendance.constants';
+import { computeAttendanceStatus } from './attendance.constants';
 import { AttendanceStatus } from '../../generated/prisma/client';
 
 @Injectable()
@@ -22,10 +22,8 @@ export class AttendancesService {
     return d;
   }
 
-  private computeStatus(checkIn: Date): AttendanceStatus {
-    const cutoff = new Date(checkIn);
-    cutoff.setHours(WORK_START_HOUR, LATE_GRACE_MINUTES, 0, 0);
-    return checkIn > cutoff ? 'LATE' : 'PRESENT';
+  computeStatus(checkIn: Date): AttendanceStatus {
+    return computeAttendanceStatus(checkIn);
   }
 
   private async getEmployeeIdForUser(userId: string): Promise<string> {
@@ -103,9 +101,6 @@ export class AttendancesService {
       ...(query.status && { status: query.status }),
       ...((query.startDate || query.endDate) && {
         date: {
-          // was: new Date(query.startDate) / new Date(query.endDate)
-          // — that parses "YYYY-MM-DD" as UTC midnight, which never
-          // matches rows written via startOfDay()'s local-time mutation.
           ...(query.startDate && { gte: this.startOfDay(new Date(query.startDate)) }),
           ...(query.endDate && { lte: this.startOfDay(new Date(query.endDate)) }),
         },

@@ -8,12 +8,14 @@ import { BootstrapAdminDto } from './dto/bootstrap-admin.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { EmailService } from '../email/email.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private userRepository: UserRepository,
     private jwtService: JwtService,
+    private emailService: EmailService,
   ) {}
 
   async bootstrapAdmin(dto: BootstrapAdminDto) {
@@ -70,7 +72,17 @@ export class AuthService {
 
     await this.userRepository.setResetToken(user.id, tokenHash, expiresAt);
 
-    // TODO: send `rawToken` via email provider instead of returning it.
+    const frontendUrl = process.env.FRONTEND_URL ?? 'http://localhost:3000';
+    const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
+
+    this.emailService.send(
+      user.email,
+      'Reset your Koru HRM password',
+      `<p>We received a request to reset your password.</p>
+       <p><a href="${resetLink}">Click here to reset your password</a></p>
+       <p style="color:#888;font-size:12px">This link expires in 30 minutes. If you didn't request this, you can ignore this email.</p>`,
+    );
+
     const devPayload =
       process.env.NODE_ENV !== 'production' ? { resetToken: rawToken } : {};
 

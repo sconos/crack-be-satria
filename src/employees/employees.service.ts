@@ -1,12 +1,15 @@
 // src/employees/employees.service.ts
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 import { EmployeesRepository } from './employees.repository';
 import { CreateEmployeeDto } from './dto/create-employee.dto';
 import { UpdateEmployeeDto } from './dto/update-employee.dto';
 import { UpdateEmployeeSelfDto } from './dto/update-employee-self.dto';
 import { UpdateEmployeeStatusDto } from './dto/update-employee-status.dto';
 import { QueryEmployeeDto } from './dto/query-employee.dto';
+import { AVATAR_UPLOAD_DIR } from './employee-avatar.constants';
 
 @Injectable()
 export class EmployeesService {
@@ -29,12 +32,13 @@ export class EmployeesService {
         address: dto.address,
         dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
         nationalId: dto.nationalId,
-        position: dto.position,
+        jobTitleId: dto.jobTitleId,
         departmentId: dto.departmentId,
         managerId: dto.managerId,
         workLocation: dto.workLocation,
         employmentType: dto.employmentType,
         hireDate: dto.hireDate ? new Date(dto.hireDate) : undefined,
+        baseSalary: dto.baseSalary,
       },
     });
   }
@@ -77,10 +81,19 @@ export class EmployeesService {
   }
 
   async update(id: string, dto: UpdateEmployeeDto) {
-    await this.findOne(id);
+    const employee = await this.findOne(id);
+
+    if (dto.email && dto.email !== employee.user.email) {
+      const existing = await this.employeesRepository.findUserByEmail(dto.email);
+      if (existing) throw new ConflictException('Email already registered');
+      await this.employeesRepository.updateUserEmail(employee.userId, dto.email);
+    }
+
+    const { email, ...employeeFields } = dto;
     return this.employeesRepository.update(id, {
-      ...dto,
+      ...employeeFields,
       dateOfBirth: dto.dateOfBirth ? new Date(dto.dateOfBirth) : undefined,
+      hireDate: dto.hireDate ? new Date(dto.hireDate) : undefined,
     });
   }
 
@@ -94,8 +107,25 @@ export class EmployeesService {
     return this.employeesRepository.update(id, { employmentStatus: dto.status });
   }
 
+  async updateAvatar(userId: string, newFilename: string | null) {
+    const employee = await this.findByUserId(userId);
+    if (employee.avatar && !employee.avatar.startsWith('data:')) {
+      await this.deleteAvatarFile(employee.avatar).catch(() => {
+      });
+    }
+    return this.employeesRepository.updateAvatar(employee.id, newFilename);
+  }
+
+  private deleteAvatarFile(filename: string) {
+    return unlink(join(AVATAR_UPLOAD_DIR, filename));
+  }
+
   findOrgChart() {
     return this.employeesRepository.findOrgChartList();
+  }
+
+  findDirectory() {
+    return this.employeesRepository.findDirectoryList();
   }
 
   private async generateEmployeeCode(): Promise<string> {

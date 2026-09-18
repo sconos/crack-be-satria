@@ -251,7 +251,7 @@ describe('LeaveService', () => {
         employeeId,
         leaveTypeId,
         startDate: '2026-09-10',
-        endDate: '2026-09-11', // 2 days, 7 remaining
+        endDate: '2026-09-11',
         reason: 'Family event',
       });
 

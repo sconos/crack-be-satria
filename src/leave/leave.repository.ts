@@ -11,7 +11,6 @@ export class LeaveRepository {
     return this.prisma.employee.findUnique({ where: { userId }, select: { id: true } });
   }
 
-  // used by admin-side leave creation to validate the target employee exists
   findEmployeeById(employeeId: string) {
     return this.prisma.employee.findUnique({ where: { id: employeeId }, select: { id: true } });
   }

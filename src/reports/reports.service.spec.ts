@@ -76,7 +76,7 @@ describe('ReportsService', () => {
         pendingCount: 2,
         rejectedCount: 1,
         cancelledCount: 0,
-        daysUsed: 9, // only approved days, not 9+4+2
+        daysUsed: 9,
       });
     });
 

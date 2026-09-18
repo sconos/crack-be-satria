@@ -47,7 +47,7 @@ export class PayrollRepository {
             firstName: true,
             lastName: true,
             employeeCode: true,
-            position: true,
+            jobTitle: { select: { name: true } },
             department: { select: { id: true, name: true } },
           },
         },
@@ -68,7 +68,13 @@ export class PayrollRepository {
       where: { id },
       include: {
         employee: {
-          select: { firstName: true, lastName: true, employeeCode: true, position: true, department: true },
+          select: {
+            firstName: true,
+            lastName: true,
+            employeeCode: true,
+            jobTitle: { select: { name: true } },
+            department: { select: { name: true } },
+          },
         },
       },
     });

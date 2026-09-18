@@ -14,9 +14,9 @@ import { CurrentUser } from './decorators/current-user.decorator';
 const REFRESH_COOKIE_OPTS = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const, // 'none' if FE/BE are on different domains (then secure must be true)
-    path: '/auth', // only sent on auth routes — refresh, logout
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7d
+    sameSite: 'lax' as const,
+    path: '/auth',
+    maxAge: 1000 * 60 * 60 * 24 * 7,
   };
 
 @ApiTags('Auth')

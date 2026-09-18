@@ -17,7 +17,6 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class AttendanceCorrectionsController {
   constructor(private correctionsService: AttendanceCorrectionsService) {}
 
-  // Employee self-service: submit a correction request for their own record
   @Post()
   create(
     @CurrentUser() user: { userId: string },
@@ -26,7 +25,14 @@ export class AttendanceCorrectionsController {
     return this.correctionsService.create(user.userId, dto);
   }
 
-  // HR/admin: list + filter — feeds the Approvals tab
+  @Get('me')
+  findMine(
+    @CurrentUser() user: { userId: string },
+    @Query() query: QueryAttendanceCorrectionDto,
+  ) {
+    return this.correctionsService.findMyRequests(user.userId, query);
+  }
+
   @Roles('ADMIN', 'HR')
   @Get()
   findAll(@Query() query: QueryAttendanceCorrectionDto) {
@@ -39,7 +45,6 @@ export class AttendanceCorrectionsController {
     return this.correctionsService.findOne(id);
   }
 
-  // HR/admin: approve or reject
   @Roles('ADMIN', 'HR')
   @Patch(':id/review')
   review(

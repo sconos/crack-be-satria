@@ -18,7 +18,7 @@ export class QueryEmployeeDto {
 
   @IsOptional()
   @IsString()
-  search?: string; // matches against firstName, lastName, employeeCode, email
+  search?: string;
 
   @IsOptional()
   @IsString()

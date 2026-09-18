@@ -4,9 +4,10 @@ import { MulterModule } from '@nestjs/platform-express';
 import { DocumentsController } from './documents.controller';
 import { DocumentsService } from './documents.service';
 import { DocumentsRepository } from './documents.repository';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [MulterModule.register()],
+  imports: [MulterModule.register(), NotificationsModule],
   controllers: [DocumentsController],
   providers: [DocumentsService, DocumentsRepository],
 })

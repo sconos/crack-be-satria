@@ -17,8 +17,4 @@ export class UpdateEmployeeSelfDto {
   @IsOptional()
   @IsString()
   emergencyContactPhone?: string;
-
-  @IsOptional()
-  @IsString()
-  avatar?: string;
 }

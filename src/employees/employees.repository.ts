@@ -3,12 +3,31 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '../../generated/prisma/client';
 
+const EMPLOYEE_INCLUDE = {
+  user: { select: { email: true, role: true, isActive: true } },
+  department: { select: { id: true, name: true } },
+  manager: { select: { id: true, firstName: true, lastName: true } },
+  jobTitle: { select: { id: true, name: true } },
+} satisfies Prisma.EmployeeInclude;
+
 @Injectable()
 export class EmployeesRepository {
   constructor(private prisma: PrismaService) {}
 
   findUserByEmail(email: string) {
     return this.prisma.user.findUnique({ where: { email } });
+  }
+
+  updateUserEmail(userId: string, email: string) {
+    return this.prisma.user.update({ where: { id: userId }, data: { email } });
+  }
+
+  updateAvatar(id: string, filename: string | null) {
+    return this.prisma.employee.update({
+      where: { id },
+      data: { avatar: filename },
+      include: EMPLOYEE_INCLUDE,
+    });
   }
 
   countEmployees() {
@@ -23,6 +42,7 @@ export class EmployeesRepository {
       const user = await tx.user.create({ data: input.userData });
       return tx.employee.create({
         data: { ...input.employeeData, userId: user.id },
+        include: EMPLOYEE_INCLUDE,
       });
     });
   }
@@ -33,11 +53,7 @@ export class EmployeesRepository {
       skip,
       take,
       orderBy: { createdAt: 'desc' },
-      include: {
-        user: { select: { email: true, role: true, isActive: true } },
-        department: { select: { id: true, name: true } },
-        manager: { select: { id: true, firstName: true, lastName: true } },
-      },
+      include: EMPLOYEE_INCLUDE,
     });
   }
 
@@ -48,32 +64,45 @@ export class EmployeesRepository {
   findById(id: string) {
     return this.prisma.employee.findUnique({
       where: { id },
-      include: {
-        user: { select: { email: true, role: true, isActive: true } },
-        department: { select: { id: true, name: true } },
-        manager: { select: { id: true, firstName: true, lastName: true } },
-      },
+      include: EMPLOYEE_INCLUDE,
     });
   }
 
   findByUserId(userId: string) {
     return this.prisma.employee.findUnique({
       where: { userId },
-      include: {
-        user: { select: { email: true, role: true, isActive: true } },
-        department: { select: { id: true, name: true } },
-        manager: { select: { id: true, firstName: true, lastName: true } },
-      },
+      include: EMPLOYEE_INCLUDE,
     });
   }
 
   update(id: string, data: Prisma.EmployeeUpdateInput) {
-    return this.prisma.employee.update({ where: { id }, data });
+    return this.prisma.employee.update({
+      where: { id },
+      data,
+      include: EMPLOYEE_INCLUDE,
+    });
   }
 
   findOrgChartList() {
     return this.prisma.employee.findMany({
       select: { id: true, firstName: true, lastName: true, managerId: true },
+    });
+  }
+
+  findDirectoryList() {
+    return this.prisma.employee.findMany({
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        jobTitle: { select: { name: true } },
+        avatar: true,
+        phone: true,
+        managerId: true,
+        department: { select: { name: true } },
+        user: { select: { email: true } },
+      },
+      orderBy: { firstName: 'asc' },
     });
   }
 }

@@ -3,9 +3,11 @@ import {
   IsDateString,
   IsEmail,
   IsEnum,
+  IsNumber,
   IsOptional,
   IsString,
   IsUUID,
+  Min,
   MinLength,
 } from 'class-validator';
 import { EmploymentType, Role } from '../../../generated/prisma/client';
@@ -44,8 +46,8 @@ export class CreateEmployeeDto {
   @IsString()
   nationalId?: string;
 
-  @IsString()
-  position!: string;
+  @IsUUID()
+  jobTitleId!: string;
 
   @IsOptional()
   @IsUUID()
@@ -66,4 +68,9 @@ export class CreateEmployeeDto {
   @IsOptional()
   @IsDateString()
   hireDate?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  baseSalary?: number;
 }

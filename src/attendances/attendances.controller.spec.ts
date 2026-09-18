@@ -3,8 +3,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AttendancesController } from './attendances.controller';
 import { AttendancesService } from './attendances.service';
 
-// Prevent Jest from loading the real (ESM) @nestjs/mapped-types package —
-// we don't need its real behavior for this test, just for the DTO classes to exist.
 jest.mock('@nestjs/mapped-types', () => ({
   PartialType: (cls: any) => cls,
   OmitType: (cls: any) => cls,

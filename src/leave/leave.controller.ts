@@ -1,4 +1,4 @@
-// src/leave/leave.controller.ts — 'me/balance' now returns an array (one entry per leave type)
+// src/leave/leave.controller.ts
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { LeaveService } from './leave.service';
@@ -22,8 +22,7 @@ export class LeaveController {
   create(@CurrentUser() user: { userId: string }, @Body() dto: CreateLeaveRequestDto) {
     return this.leaveService.create(user.userId, dto);
   }
-
-  // HR/admin: file a leave request on an employee's behalf (still lands as PENDING)
+  
   @Roles('ADMIN', 'HR')
   @Post('admin')
   createForEmployee(@Body() dto: AdminCreateLeaveRequestDto) {

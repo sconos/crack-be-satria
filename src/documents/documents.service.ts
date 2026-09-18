@@ -11,10 +11,14 @@ import { UploadDocumentDto } from './dto/upload-document.dto';
 import { ReviewDocumentDto } from './dto/review-document.dto';
 import { QueryDocumentDto } from './dto/query-document.dto';
 import { DOCUMENTS_UPLOAD_DIR } from './documents.constants';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class DocumentsService {
-  constructor(private documentsRepository: DocumentsRepository) {}
+  constructor(
+    private documentsRepository: DocumentsRepository,
+    private notificationsService: NotificationsService,
+  ) {}
 
   private async getEmployeeIdForUser(userId: string): Promise<string> {
     const employee = await this.documentsRepository.findEmployeeIdByUserId(userId);
@@ -31,12 +35,21 @@ export class DocumentsService {
 
     const employeeId = await this.getEmployeeIdForUser(userId);
 
-    return this.documentsRepository.create({
+    const document = await this.documentsRepository.create({
       employeeId,
       fileName: file.originalname,
       storedName: file.filename,
       type: dto.type,
     });
+
+    await this.notificationsService.notifyAdmins(
+      'DOCUMENT_UPLOADED',
+      'New document uploaded',
+      `A ${dto.type} document needs review.`,
+      '/employees',
+    );
+
+    return document;
   }
 
   async findMyDocuments(userId: string, query: QueryDocumentDto) {
@@ -69,18 +82,30 @@ export class DocumentsService {
   }
 
   async review(id: string, reviewerUserId: string, dto: ReviewDocumentDto) {
-    await this.findOne(id);
+    const document = await this.findOne(id);
 
     if (dto.decision === 'REJECTED' && !dto.rejectionReason) {
       throw new BadRequestException('rejectionReason is required when rejecting');
     }
 
-    return this.documentsRepository.update(id, {
+    const updated = await this.documentsRepository.update(id, {
       status: dto.decision,
       rejectionReason: dto.decision === 'REJECTED' ? dto.rejectionReason : null,
       reviewedByUserId: reviewerUserId,
       reviewedAt: new Date(),
     });
+
+    await this.notificationsService.notifyEmployee(
+      document.employeeId,
+      'DOCUMENT_REVIEWED',
+      dto.decision === 'VERIFIED' ? 'Document verified' : 'Document rejected',
+      dto.decision === 'VERIFIED'
+        ? `Your ${document.type} document was verified.`
+        : `Your ${document.type} document was rejected: ${dto.rejectionReason}`,
+      '/portal/documents',
+    );
+
+    return updated;
   }
 
   getFilePath(storedName: string): string {
@@ -91,7 +116,6 @@ export class DocumentsService {
     const document = await this.findOne(id);
     await this.documentsRepository.delete(id);
 
-    // best-effort cleanup — don't fail the request if the file is already gone
     try {
       await unlink(this.getFilePath(document.storedName));
     } catch {

@@ -47,7 +47,7 @@ export class UserRepository {
         password: hashedPassword,
         resetTokenHash: null,
         resetTokenExpiresAt: null,
-        refreshToken: null, // invalidate existing sessions
+        refreshToken: null,
       },
     });
   }
