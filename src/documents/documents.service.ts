@@ -1,6 +1,7 @@
 // src/documents/documents.service.ts
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -24,6 +25,23 @@ export class DocumentsService {
     const employee = await this.documentsRepository.findEmployeeIdByUserId(userId);
     if (!employee) throw new NotFoundException('Employee profile not found');
     return employee.id;
+  }
+
+  private isPrivilegedRole(role: string): boolean {
+    return role === 'ADMIN' || role === 'HR';
+  }
+
+  async findOneForRequester(id: string, requesterUserId: string, requesterRole: string) {
+    const document = await this.findOne(id);
+
+    if (!this.isPrivilegedRole(requesterRole)) {
+      const employeeId = await this.getEmployeeIdForUser(requesterUserId);
+      if (document.employeeId !== employeeId) {
+        throw new ForbiddenException('You do not have access to this document');
+      }
+    }
+
+    return document;
   }
 
   async upload(
@@ -112,8 +130,8 @@ export class DocumentsService {
     return join(DOCUMENTS_UPLOAD_DIR, storedName);
   }
 
-  async remove(id: string) {
-    const document = await this.findOne(id);
+  async remove(id: string, requesterUserId: string, requesterRole: string) {
+    const document = await this.findOneForRequester(id, requesterUserId, requesterRole);
     await this.documentsRepository.delete(id);
 
     try {

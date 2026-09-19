@@ -2,9 +2,10 @@
 
 [![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/EdN1T4tj)
 
-**Live:** [www.koru-hrm.site](https://www.koru-hrm.site) (frontend) · Swagger docs at `/api/docs` on the deployed API
+## Deployments
 
-**Frontend:** [koru-frontend](<repo-url>) — see that repo for the Next.js app this API serves.
+- **API:** [api.koru-hrm.site](https://api.koru-hrm.site) · Swagger docs at [api.koru-hrm.site/api/docs](https://api.koru-hrm.site/api/docs)
+- **Frontend:** [www.koru-hrm.site](https://www.koru-hrm.site) — see the [koru-frontend](https://github.com/sconos/crack-fe-satria) repo for the Next.js app this API serves.
 
 A NestJS-based HR and employee management backend for the KORU platform. The API handles authentication, employee records, departments, attendance, leave, payroll, public holiday management, document uploads, notifications, and reporting.
 
@@ -82,7 +83,7 @@ Before running the project, make sure you have installed:
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/sconos/crack-be-satria.git
+git clone https://github.com/sconos/crack-fe-satria.git
 cd koru-backend
 ```
 
@@ -190,6 +191,10 @@ npm run seed
 ## Database
 
 Prisma is configured in `prisma/schema.prisma` and uses PostgreSQL. Database migrations are stored under `prisma/migrations/`.
+
+### ERD
+
+![ERD](./docs/ERD.png)
 
 Useful commands:
 

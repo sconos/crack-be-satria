@@ -99,13 +99,24 @@ export class DocumentsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.documentsService.findOne(id);
+  findOne(
+    @CurrentUser() user: { userId: string; role: string },
+    @Param('id') id: string,
+  ) {
+    return this.documentsService.findOneForRequester(id, user.userId, user.role);
   }
 
   @Get(':id/download')
-  async download(@Param('id') id: string, @Res() res: Response) {
-    const document = await this.documentsService.findOne(id);
+  async download(
+    @CurrentUser() user: { userId: string; role: string },
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const document = await this.documentsService.findOneForRequester(
+      id,
+      user.userId,
+      user.role,
+    );
     const filePath = this.documentsService.getFilePath(document.storedName);
     res.download(filePath, document.fileName);
   }
@@ -121,7 +132,10 @@ export class DocumentsController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.documentsService.remove(id);
+  remove(
+    @CurrentUser() user: { userId: string; role: string },
+    @Param('id') id: string,
+  ) {
+    return this.documentsService.remove(id, user.userId, user.role);
   }
 }
